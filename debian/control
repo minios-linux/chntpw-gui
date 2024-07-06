@@ -1,0 +1,20 @@
+Source: chntpw-gui
+Section: utils
+Priority: optional
+Maintainer: crims0n <crims0n@minios.dev>
+Build-Depends: debhelper (>= 11), gettext
+Standards-Version: 4.1.3
+Homepage: https://minios.dev
+
+Package: chntpw-gui
+Architecture: all
+Depends: bash (>= 4.4), util-linux (>= 2.31), gettext, polkitd | policykit-1, pkexec | policykit-1, sudo, ntfs-3g, yad, gtkdialog, chntpw, reglookup, ${misc:Depends}
+Description: CHNTPW GUI for Windows Password Reset
+ CHNTPW GUI is an utility designed for bypassing or resetting Microsoft 
+ Windows account passwords when standard recovery methods fail. The utility 
+ offers a simple and friendly user interface, making it accessible for any 
+ user, even without prior terminal experience. CHNTPW GUI can be used both 
+ for recovering access to Windows accounts and conducting various kinds of 
+ security testing.
+ .
+ This package should be used responsibly and strictly within legal operations.

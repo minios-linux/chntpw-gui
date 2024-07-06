@@ -1,0 +1,66 @@
+# Italian translations for chntpw-gui package.
+# Copyright (C) 2024 MiniOS Linux.
+# This file is distributed under the same license as the chntpw-gui package.
+# crims0n <crims0n@minios.dev>, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: chntpw-gui 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-03-17 13:59+0300\n"
+"PO-Revision-Date: 2024-03-17 14:43+0300\n"
+"Last-Translator: crims0n <crims0n@minios.dev>, 2024.\n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "CHNTPW Menu"
+msgstr "Menu CHNTPW"
+
+msgid "Pick a method to change or reset your Windows password."
+msgstr "Scegli un metodo per cambiare o reimpostare la tua password di Windows."
+
+msgid "_Not Hibernated - Windows PC was Shut Down."
+msgstr "_Non in ibernazione - Il PC Windows è stato spento."
+
+msgid "_Hibernated - Windows PC was rebooted."
+msgstr "_In ibernazione - Il PC Windows è stato riavviato."
+
+msgid "_PC Login Now - Older GUI program."
+msgstr "_PC Login Now - Programma GUI più vecchio."
+
+msgid "Change Windows Password"
+msgstr "Cambia la password di Windows"
+
+msgid "Please select a Microsoft Windows installation:"
+msgstr "Si prega di selezionare un'installazione di Microsoft Windows:"
+
+msgid "[ Device Partition Number , Size , Label , UUID , OS Version ]"
+msgstr "[ Numero di partizione del dispositivo , Dimensione , Etichetta , UUID , Versione del sistema operativo ]"
+
+msgid "Tip: To quickly clear Administrator password, select (1) and then (y) after selection."
+msgstr "Suggerimento: Per cancellare rapidamente la password dell'Amministratore, seleziona (1) e poi (y) dopo la selezione."
+
+msgid "Read-write mounting is denied if the NTFS volume is hibernated. Please note, this means that the saved Windows session will be completely lost."
+msgstr "Il montaggio in lettura-scrittura è negato se il volume NTFS è in ibernazione. Si prega di notare che ciò significa che la sessione Windows salvata sarà completamente persa."
+
+msgid "Microsoft Windows was not found on this system."
+msgstr "Microsoft Windows non è stato trovato su questo sistema."
+
+msgid "Could not find any supported NTFS partitions."
+msgstr "Non è stato possibile trovare alcuna partizione NTFS supportata."
+
+msgid "Operation not permitted. Failed to mount /dev/"
+msgstr "Operazione non permessa. Impossibile montare /dev/"
+
+msgid "The partition appears to be mounted as read-only."
+msgstr "La partizione sembra essere montata come sola lettura."
+
+msgid "Retry this script after next booting into Windows, and then opting to Restart (versus Shut down) Windows.\nTime the system restart to boot MiniOS instead. Remember to select the remove_hiberfile option."
+msgstr "Riprova questo script dopo il prossimo avvio in Windows, e poi scegli di Riavviare (invece di Spegnere) Windows.\nProgramma il riavvio del sistema per avviare MiniOS al suo posto. Ricorda di selezionare l'opzione remove_hiberfile."
+
+msgid "Searching for Windows installations..."
+msgstr "Ricerca di installazioni di Windows..."

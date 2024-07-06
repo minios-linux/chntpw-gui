@@ -1,0 +1,22 @@
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=Change Windows Password
+Name[de]=Windows-Passwort ändern
+Name[es]=Cambiar la contraseña de Windows
+Name[fr]=Changer le mot de passe Windows
+Name[it]=Cambia la password di Windows
+Name[pt_BR]=Alterar senha do Windows
+Name[ru]=Изменить пароль Windows
+Comment=Change the password of a Windows user
+Comment[de]=Ändern Sie das Passwort eines Windows-Benutzers
+Comment[es]=Cambiar la contraseña de un usuario de Windows
+Comment[fr]=Changer le mot de passe d'un utilisateur Windows
+Comment[it]=Cambia la password di un utente Windows
+Comment[pt_BR]=Alterar a senha de um usuário do Windows
+Comment[ru]=Изменить пароль пользователя Windows
+#Exec=sudo --preserve-env=DBUS_SESSION_BUS_ADDRESS,XDG_RUNTIME_DIR sh -c '/usr/bin/chntpw-gui'
+Exec=pkexec /usr/bin/chntpw-gui
+Icon=system-users
+Terminal=false
+Categories=System;Security;

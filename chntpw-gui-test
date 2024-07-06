@@ -1,0 +1,199 @@
+#!/bin/bash
+
+# Copyright 2018 Patrick J. Verner, Waupaca, WI, USA
+# Copyright 2024 crims0n <crims0n@minios.dev>
+# All rights reserved.
+#
+# Redistribution and use of this script, with or without modification, is
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of this script must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+#  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+#  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
+#  EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+#  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+#  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+#  OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+#  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+#  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+#  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# Set text domain
+export TEXTDOMAIN="chntpw-gui"
+
+SEARCHING=$(gettext "Searching for Windows installations...")
+TITLE1=$(gettext "Change Windows Password")
+TEXTL0=$(gettext "Please select a Microsoft Windows installation:")
+TEXTL1=$(gettext "[ Device Partition Number , Size , Label , UUID , OS Version ]")
+TIP0=$(gettext "Tip: To quickly clear Administrator password, select (1) and then (y) after selection.")
+TIP1=$(gettext "Read-write mounting is denied if the NTFS volume is hibernated. Please note, this means that the saved Windows session will be completely lost.")
+WINERR=$(gettext "Microsoft Windows was not found on this system.")
+NTFSERR=$(gettext "Could not find any supported NTFS partitions.")
+PROBERR=$(gettext "Operation not permitted. Failed to mount /dev/")
+MNTERR=$(gettext "The partition appears to be mounted as read-only.")
+RESTARTERR=$(gettext "Retry this script after next booting into Windows, and then opting to Restart (versus Shut down) Windows.\nTime the system restart to boot MiniOS instead. Remember to select the remove_hiberfile option.")
+
+rm -f /tmp/{execute,winversions}
+
+PART_LIST=$(lsblk -nr -o NAME,TYPE,FSTYPE | grep -iw part | awk -F" " '$3 ~ /./ {print $1}')
+
+for NTFS_CHECK in $PART_LIST; do
+	FILESYSTEM=$(lsblk -n -r -o FSTYPE /dev/$NTFS_CHECK | tr '[:upper:]' '[:lower:]')
+	[ "$FILESYSTEM" = "ntfs" -o "$FILESYSTEM" = "ntfs-3g" ] && NTFS="${NTFS} $NTFS_CHECK"
+done
+
+[ -z "$NTFS" ] && yad --error --width=500 --height=200 --border=10 --text "$NTFSERR" --window-icon="dialog-error" --title="$(gettext "Error")" && exit 1
+
+TESTMOUNT="/tmp/windows_test"
+WINNT="WINNT/system32/config/SAM"
+WINXP="WINDOWS/system32/config/SAM"
+WIN78="Windows/System32/config/SAM"
+WINPATH="$WINNT $WINXP $WIN78"
+WINHIVE="${WINNT/SAM/SOFTWARE} ${WINXP/SAM/SOFTWARE} ${WINXP/SAM/software} ${WIN78/SAM/SOFTWARE} ${WIN78/SAM/software}"
+
+cp -f /usr/bin/yad /tmp/yadsearch
+(
+	sleep 1000 &
+	echo
+) | /tmp/yadsearch --progress --no-buttons --undecorated --borders=10 --skip-taskbar --width=300 --border=10 --text "$SEARCHING" --pulsate --window-icon="system-search" &
+
+[ ! -e "$TESTMOUNT" ] && mkdir $TESTMOUNT
+for WINDOWS_CHECK in $NTFS; do
+	if grep -wq $WINDOWS_CHECK /proc/mounts; then
+		MOUNT_POINT=$(lsblk -nr -o MOUNTPOINT /dev/$WINDOWS_CHECK)
+		for FINDSAM in $WINPATH; do [ -e "$MOUNT_POINT/$FINDSAM" ] && WINDOWS="${WINDOWS} $WINDOWS_CHECK"; done
+		if ! grep -Ew "[[:lower:]]{2}_[[:upper:]]{2}" /proc/cmdline; then
+			for FINDSOFTW in $WINHIVE; do
+				[ -e "$MOUNT_POINT/$FINDSOFTW" ] &&
+					reglookup -H -p /Microsoft/Windows\ NT/CurrentVersion/ProductName "$MOUNT_POINT/$FINDSOFTW" | sed 's/,$//' |
+					awk -v p="$WINDOWS_CHECK" -F"," '{print p","$NF}' >>/tmp/winversions
+			done
+		fi
+	else
+		mount -o ro /dev/$WINDOWS_CHECK $TESTMOUNT
+		for FINDSAM in $WINPATH; do [ -e "$TESTMOUNT/$FINDSAM" ] && WINDOWS="${WINDOWS} $WINDOWS_CHECK"; done
+		if ! grep -Ew "[[:lower:]]{2}_[[:upper:]]{2}" /proc/cmdline; then
+			for FINDSOFTW in $WINHIVE; do
+				[ -e "$TESTMOUNT/$FINDSOFTW" ] &&
+					reglookup -H -p /Microsoft/Windows\ NT/CurrentVersion/ProductName "$TESTMOUNT/$FINDSOFTW" | sed 's/,$//' |
+					awk -v p="$WINDOWS_CHECK" -F"," '{print p","$NF}' >>/tmp/winversions
+			done
+		fi
+		umount $TESTMOUNT || umount $TESTMOUNT
+	fi
+done
+rmdir $TESTMOUNT
+
+# Create the gtkdialog entries
+unset COMBINED_LIST
+for PARTITION in $WINDOWS; do
+	[ -s /tmp/winversions ] && PRODNAME=", $(grep -w $PARTITION /tmp/winversions | awk -F, '{print $NF}')"
+	UUID=$(lsblk -n -r -o UUID /dev/$PARTITION)
+	LABEL=$(lsblk -n -r -o LABEL /dev/$PARTITION)
+	SIZE=$(lsblk -n -r -o SIZE /dev/$PARTITION)
+	LINE1='<button>'
+	LINE2="<label>/dev/$PARTITION $SIZE, $LABEL $UUID $PRODNAME</label>"
+	LINE3="<action>echo $PARTITION > /tmp/execute</action><action>exit:Exit</action>"
+	LINE4="</button>"
+	COMBINED_LIST="${COMBINED_LIST} $LINE1 $LINE2 $LINE3 $LINE4"
+done
+
+killall yadsearch &>/dev/null
+rm -f /tmp/yadsearch
+
+[ -z "$COMBINED_LIST" ] && yad --error --width=500 --height=200 --border=10 --text "$WINERR" --window-icon="dialog-error" --title="$(gettext "Error")" && exit 1
+
+# Start the first dialog to select Windows
+echo '
+	<window title="'$TITLE1'" window-position="1" icon-name="system-users">
+		<vbox>
+		<text width-chars="-1"><label>"'$TEXTL0'"</label></text>
+		<hseparator></hseparator>
+		<text width-chars="-1"><sensitive>false</sensitive><label>"'$TEXTL1'"</label></text>
+			'$COMBINED_LIST'
+
+			<checkbox tooltip-text="'$TIP0'">
+				<label>Administrator</label>
+				<variable>ADMIN</variable>
+			</checkbox>
+			<checkbox tooltip-text="'$TIP1'">
+				<label>Use remove_hiberfile mounting option</label>
+				<variable>OREMOVE</variable>
+			</checkbox>
+		</vbox>
+	</window>
+
+' | gtkdialog -s >/tmp/gtkdialog-variables
+
+. /tmp/gtkdialog-variables
+rm -f /tmp/gtkdialog-variables
+
+# Run chntpw
+if [ -f /tmp/execute ]; then
+	PARTITION=$(cat /tmp/execute)
+	#
+	rm -f /tmp/execute
+	if grep -wq $PARTITION /proc/mounts; then
+		findmnt -no OPTIONS /dev/$PARTITION | grep -iw "ro" && yad --error --width=500 --height=200 --border=10 --text "${PROBERR}${PARTITION}.\n${MNTERR}" --window-icon="dialog-error" --title="$(gettext "Error")" && exit 1
+		MOUNT_POINT=$(lsblk -nr -o MOUNTPOINT /dev/$PARTITION)
+		[ "$MOUNT_POINT" ] || {
+			sleep 1
+			MOUNT_POINT=$(lsblk -nr -o MOUNTPOINT /dev/$PARTITION)
+		}
+	else
+		if [ "$OREMOVE" = "false" ]; then
+			if ntfs-3g.probe --readwrite /dev/$PARTITION; then
+				mount /dev/$PARTITION
+				MOUNT_POINT=$(lsblk -nr -o MOUNTPOINT /dev/$PARTITION)
+				[ "$MOUNT_POINT" ] || {
+					sleep 1
+					MOUNT_POINT=$(lsblk -nr -o MOUNTPOINT /dev/$PARTITION)
+				}
+			else
+				PROBEOUT="$(ntfs-3g.probe --readwrite /dev/$PARTITION 2>&1)"
+				[ "$PROBEOUT" ] && yad --error --width=500 --height=200 --border=10 --text "${PROBERR}${PARTITION}.\n${PROBEOUT}" --window-icon="dialog-error" --title="$(gettext "Error")" ||
+					yad --error --width=500 --height=200 --border=10 --text "${PROBERR}${PARTITION}." --window-icon="dialog-error" --title="$(gettext "Error")"
+				exit 1
+			fi
+		else
+			if (! ntfs-3g.probe --readwrite /dev/$PARTITION); then
+				mount -t ntfs-3g -o remove_hiberfile /dev/$PARTITION || {
+					ntfsfix /dev/$PARTITION
+					mount -t ntfs-3g -o remove_hiberfile /dev/$PARTITION
+					sleep 1
+					umount /dev/$PARTITION
+				}
+				PROBEOUT="$(ntfs-3g.probe --readwrite /dev/$PARTITION 2>&1)"
+				if [ "$PROBEOUT" ]; then
+					yad --error --width=500 --height=200 --border=10 --text "${PROBERR}${PARTITION}.\n${PROBEOUT}\n\n${RESTARTERR}" --window-icon="dialog-error" --title="$(gettext "Error")"
+					exit 1
+				else
+					mount /dev/$PARTITION
+					MOUNT_POINT=$(lsblk -nr -o MOUNTPOINT /dev/$PARTITION)
+					[ "$MOUNT_POINT" ] || {
+						sleep 1.25
+						MOUNT_POINT=$(lsblk -nr -o MOUNTPOINT /dev/$PARTITION)
+					}
+				fi
+			else
+				mount /dev/$PARTITION && MOUNT_POINT=$(lsblk -nr -o MOUNTPOINT /dev/$PARTITION)
+				[ "$MOUNT_POINT" ] || {
+					sleep 1.25
+					MOUNT_POINT=$(lsblk -nr -o MOUNTPOINT /dev/$PARTITION)
+				}
+			fi
+		fi
+	fi
+
+	[ "$MOUNT_POINT" ] || { yad --error --width=500 --height=200 --border=10 --text "${PROBERR}${PARTITION},\nor encountered issue with volume ${PARTITION}.\n\nPerhaps, retry this script." --window-icon="dialog-error" --title="$(gettext "Error")" && exit 1; }
+	for FINDSAM in $WINPATH; do [ -e "$MOUNT_POINT/$FINDSAM" ] && SAMPATH="$MOUNT_POINT/$FINDSAM"; done
+
+	if [ "$ADMIN" = "false" ]; then
+		xfce4-terminal --title="$TITLE1" --geometry=80x26 -e "chntpw -i $SAMPATH"
+	else
+		xfce4-terminal --title="$TITLE1" --geometry=80x26 -e "chntpw -u Administrator $SAMPATH"
+	fi
+fi
